@@ -3,7 +3,7 @@ services:
     image: public.ecr.aws/n6q5v2z5/project-starmie:latest
     restart: always
     ports:
-      - "80:3000"
+      - "3000:3000"
     environment:
       - TZ=Asia/Shanghai
 
@@ -15,5 +15,19 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - /etc/v2ray:/etc/v2ray
+      - ./etc/v2ray:/etc/v2ray
     command: run -c /etc/v2ray/config.json
+
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./etc/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - client
+      - v2ray
+    command: nginx -g 'daemon off;'
