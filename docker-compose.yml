@@ -35,12 +35,13 @@ services:
       - v2ray
     command: nginx -g 'daemon off;'
 
-  # certbot:
-  #   image: certbot/certbot:latest
-  #   restart: always
-  #   environment:
-  #     - TZ=Asia/Shanghai
-  #   volumes:
-  #     - /etc/letsencrypt:/etc/letsencrypt
-  #     - /var/www/certbot:/var/www/certbot
-  #   command: certonly --webroot --webroot-path=/var/www/certbot/ --email niuyunsi@gmail.com --agree-tos --no-eff-email --force-renewal -d wailord.f7b7.com --dry-run
+  certbot:
+    image: certbot/certbot:latest
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+    depends_on:
+      - nginx
+    command: certonly --reinstall --webroot --webroot-path=/var/www/certbot/ --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}
