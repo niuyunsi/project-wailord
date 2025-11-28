@@ -1,6 +1,6 @@
 services:
   client:
-    image: public.ecr.aws/n6q5v2z5/project-starmie:latest
+    image: public.ecr.aws/n6q5v2z5/project-starmie-amd64:latest
     restart: always
     ports:
       - "3000:3000"
@@ -15,7 +15,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - /etc/v2ray:/etc/v2ray
+      - v2ray-config:/etc/v2ray
     command: run -c /etc/v2ray/config.json
 
   nginx:
@@ -27,12 +27,9 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - /etc/nginx/conf.d:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/www/certbot:/var/www/certbot
-    depends_on:
-      - client
-      - v2ray
+      - nginx-conf:/etc/nginx/conf.d
+      - certs:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
     command: nginx -g 'daemon off;'
 
   certbot:
@@ -40,8 +37,14 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/www/certbot:/var/www/certbot
+      - certs:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
     depends_on:
       - nginx
     command: certonly --reinstall --webroot --webroot-path=/var/www/certbot/ --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}
+
+volumes:
+  v2ray-config:
+  nginx-conf:
+  certs:
+  certbot-www:
