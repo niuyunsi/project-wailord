@@ -1,6 +1,6 @@
 services:
   client:
-    image: public.ecr.aws/n6q5v2z5/project-starmie-amd64:latest
+    image: public.ecr.aws/n6q5v2z5/project-wailmer:0.1.4
     restart: always
     ports:
       - "3000:3000"
