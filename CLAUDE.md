@@ -25,7 +25,7 @@ Use `ssh wailord "command"` for remote commands and `scp file wailord:/path/` fo
 
 ### File Locations
 - **Remote docker-compose**: `/home/ec2-user/docker/docker-compose.yml`
-- **Remote environment file**: `/home/ec2-user/docker/.env.local`
+- **Remote environment file**: `/home/ec2-user/docker/.env` (renamed from .env.local)
 - **Remote templates**: `/home/ec2-user/docker/etc/nginx/templates/`
 - **Remote static files**: `/home/ec2-user/html/` (Astro build output)
 
@@ -44,6 +44,15 @@ Use `ssh wailord "command"` for remote commands and `scp file wailord:/path/` fo
 2. `ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates"`
 3. `scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/`
 4. `ssh wailord "docker-compose ... restart nginx"`
+
+### First-Time Setup Pattern
+For initial deployment when SSL certificates don't exist:
+1. `ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates /home/ec2-user/html"`
+2. Upload docker-compose.yml and .env (renamed from .env.local): `scp .env.local wailord:/home/ec2-user/docker/.env`
+3. Upload init template: `scp etc/nginx/templates/default.conf.init.template wailord:/home/ec2-user/docker/etc/nginx/templates/default.conf.template`
+4. Start services: `ssh wailord "docker-compose ... up nginx certbot"`
+5. Upload full template: `scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/`
+6. Restart nginx: `ssh wailord "docker-compose ... restart nginx"`
 
 ### Environment Variables
 Located in `.env.local`:

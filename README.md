@@ -42,35 +42,35 @@ ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates /home/ec2-user/h
 
 # Upload docker-compose.yml and environment file
 scp docker-compose.yml wailord:/home/ec2-user/docker/
-scp .env.local wailord:/home/ec2-user/docker/
+scp .env.local wailord:/home/ec2-user/docker/.env
 
 # Upload initial nginx template for SSL certificate generation
 # (SSL certificates don't exist yet, so we use a simplified template with HTTP only)
 scp etc/nginx/templates/default.conf.init.template wailord:/home/ec2-user/docker/etc/nginx/templates/default.conf.template
 
 # Start nginx and certbot for initial SSL certificate
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up nginx certbot"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml up nginx certbot"
 
 # After certificates are obtained, upload the full nginx template
 scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/
 
 # Restart nginx to apply the full configuration
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local restart nginx"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml restart nginx"
 
 # Start all services
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up -d"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml up -d"
 ```
 
 ### Start All Services
 
 ```bash
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up -d"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml up -d"
 ```
 
 ### Renew SSL Certificate
 
 ```bash
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up certbot"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml up certbot"
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml exec nginx nginx -s reload"
 ```
 
@@ -84,7 +84,7 @@ ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates"
 scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/
 
 # Restart nginx to apply new configuration
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local restart nginx"
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml restart nginx"
 ```
 
 ## Architecture
@@ -119,7 +119,7 @@ Nginx configuration uses `envsubst` for environment variable substitution:
 | Location | Path |
 |----------|------|
 | Docker Compose config | `/home/ec2-user/docker/docker-compose.yml` |
-| Environment file | `/home/ec2-user/docker/.env.local` |
+| Environment file | `/home/ec2-user/docker/.env` |
 | Nginx templates | `/home/ec2-user/docker/etc/nginx/templates/` |
 | Static files | `/home/ec2-user/html/` |
 
