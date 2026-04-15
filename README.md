@@ -38,11 +38,17 @@ V2RAY_ID=your-v2ray-uuid
 
 ```bash
 # Create necessary directories on remote instance
-ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates /home/ec2-user/html"
+ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates /home/ec2-user/docker/etc/v2ray /home/ec2-user/html"
 
 # Upload docker-compose.yml and environment file
 scp docker-compose.yml wailord:/home/ec2-user/docker/
 scp .env.local wailord:/home/ec2-user/docker/.env
+
+# Upload V2Ray configuration template
+scp etc/v2ray/config.json.template wailord:/home/ec2-user/docker/etc/v2ray/config.json.template
+
+# Generate V2Ray configuration on remote server (using remote .env)
+ssh wailord "cd /home/ec2-user/docker && set -a && source .env && set +a && envsubst < etc/v2ray/config.json.template > etc/v2ray/config.json"
 
 # Upload initial nginx template for SSL certificate generation
 # (SSL certificates don't exist yet, so we use a simplified template with HTTP only)
@@ -87,6 +93,19 @@ scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml restart nginx"
 ```
 
+### Update V2Ray Configuration
+
+```bash
+# Upload V2Ray configuration template
+scp etc/v2ray/config.json.template wailord:/home/ec2-user/docker/etc/v2ray/config.json.template
+
+# Generate V2Ray configuration on remote server (using remote .env)
+ssh wailord "cd /home/ec2-user/docker && set -a && source .env && set +a && envsubst < etc/v2ray/config.json.template > etc/v2ray/config.json"
+
+# Restart v2ray to apply new configuration
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml restart v2ray"
+```
+
 ## Architecture
 
 ### Service Communication
@@ -101,7 +120,15 @@ ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml restart 
 
 - `certs` - Let's Encrypt SSL certificates
 - `certbot-www` - ACME challenge directory
-- `v2ray-config` - V2Ray configuration
+
+### V2Ray Configuration
+
+- Template file `config.json` uses `${V2RAY_ID}` variable
+- Uploaded to `/home/ec2-user/docker/etc/v2ray/config.json.template`
+- Generated on remote server using `envsubst` with remote `.env` file
+- `set -a` automatically exports all variables from `.env` for `envsubst` to use
+- Output to `/home/ec2-user/docker/etc/v2ray/config.json`
+- Mounted as read-only into container at `/etc/v2ray/config.json`
 
 ### Template-Based Configuration
 
@@ -121,6 +148,8 @@ Nginx configuration uses `envsubst` for environment variable substitution:
 | Docker Compose config | `/home/ec2-user/docker/docker-compose.yml` |
 | Environment file | `/home/ec2-user/docker/.env` |
 | Nginx templates | `/home/ec2-user/docker/etc/nginx/templates/` |
+| V2Ray config template | `/home/ec2-user/docker/etc/v2ray/config.json.template` |
+| V2Ray generated config | `/home/ec2-user/docker/etc/v2ray/config.json` |
 | Static files | `/home/ec2-user/html/` |
 
 ### CloudWatch Monitoring

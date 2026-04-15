@@ -9,7 +9,7 @@ services:
       - TZ=Asia/Shanghai
       - DOMAIN=${DOMAIN}
     volumes:
-      - ./etc/nginx/templates:/etc/nginx/templates:ro
+      - /home/ec2-user/docker/etc/nginx/templates:/etc/nginx/templates:ro
       - certs:/etc/letsencrypt
       - certbot-www:/var/www/certbot
       - /home/ec2-user/html:/usr/share/nginx/html:ro
@@ -23,7 +23,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - v2ray-config:/etc/v2ray
+      - /home/ec2-user/docker/etc/v2ray:/etc/v2ray:ro
     command: run -c /etc/v2ray/config.json
 
   certbot:
@@ -38,6 +38,5 @@ services:
     command: certonly --reinstall --webroot --webroot-path=/var/www/certbot/ --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}
 
 volumes:
-  v2ray-config:
   certs:
   certbot-www:
