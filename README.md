@@ -38,30 +38,15 @@ V2RAY_ID=your-v2ray-uuid
 
 ```bash
 # Create necessary directories on remote instance
-ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx /home/ec2-user/html"
+ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates /home/ec2-user/html"
 
 # Upload docker-compose.yml and environment file
 scp docker-compose.yml wailord:/home/ec2-user/docker/
 scp .env.local wailord:/home/ec2-user/docker/
 
-# Create a simplified nginx template for initial SSL certificate generation
-# (SSL certificates don't exist yet, so we only configure HTTP and ACME challenge)
-ssh wailord "cat > /home/ec2-user/docker/etc/nginx/templates/default.conf.template << 'EOF'
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 200 'Nginx is running. SSL certificate setup in progress...';
-        add_header Content-Type text/plain;
-    }
-}
-EOF"
+# Upload initial nginx template for SSL certificate generation
+# (SSL certificates don't exist yet, so we use a simplified template with HTTP only)
+scp etc/nginx/templates/default.conf.init.template wailord:/home/ec2-user/docker/etc/nginx/templates/default.conf.template
 
 # Start nginx and certbot for initial SSL certificate
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up nginx certbot"
@@ -124,6 +109,10 @@ Nginx configuration uses `envsubst` for environment variable substitution:
 - Templates located in `etc/nginx/templates/`
 - `${DOMAIN}` variable is replaced at container startup
 - No manual volume editing required
+
+**Template Files:**
+- `default.conf.template` - Full nginx configuration with SSL
+- `default.conf.init.template` - Simplified template for initial SSL certificate generation (HTTP only)
 
 ### File Paths
 

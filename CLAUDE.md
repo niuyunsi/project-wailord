@@ -35,6 +35,10 @@ Use `ssh wailord "command"` for remote commands and `scp file wailord:/path/` fo
 - Automatically rendered at container startup
 - No manual docker volume editing required
 
+**Template Files:**
+- `default.conf.template` - Full nginx configuration with SSL
+- `default.conf.init.template` - Simplified template for initial SSL certificate generation (HTTP only)
+
 ### Working Pattern for Nginx Config Updates
 1. Update `etc/nginx/templates/default.conf.template` locally
 2. `ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates"`
