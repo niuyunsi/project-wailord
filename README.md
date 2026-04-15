@@ -38,29 +38,42 @@ V2RAY_ID=your-v2ray-uuid
 
 ```bash
 # Create necessary directories on remote instance
-ssh wailord "mkdir -p /home/ec2-user/docker /home/ec2-user/html"
+ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx /home/ec2-user/html"
 
 # Upload docker-compose.yml and environment file
 scp docker-compose.yml wailord:/home/ec2-user/docker/
 scp .env.local wailord:/home/ec2-user/docker/
 
-# Upload nginx templates
-scp -r templates wailord:/home/ec2-user/docker/
-
-# Create initial nginx config for SSL certificate generation
-ssh wailord "cat > /home/ec2-user/docker/nginx-init.conf << 'EOF'
+# Create a simplified nginx template for initial SSL certificate generation
+# (SSL certificates don't exist yet, so we only configure HTTP and ACME challenge)
+ssh wailord "cat > /home/ec2-user/docker/etc/nginx/templates/default.conf.template << 'EOF'
 server {
-    listen       80;
-    listen  [::]:80;
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
+    }
+
+    location / {
+        return 200 'Nginx is running. SSL certificate setup in progress...';
+        add_header Content-Type text/plain;
     }
 }
 EOF"
 
 # Start nginx and certbot for initial SSL certificate
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up nginx certbot"
+
+# After certificates are obtained, upload the full nginx template
+scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/
+
+# Restart nginx to apply the full configuration
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local restart nginx"
+
+# Start all services
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up -d"
 ```
 
 ### Start All Services
@@ -79,21 +92,14 @@ ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml exec ngi
 ### Update Nginx Configuration
 
 ```bash
+# Ensure target directory exists (may not exist on first run)
+ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates"
+
 # Deploy updated template
-scp templates/default.conf.template wailord:/home/ec2-user/docker/templates/
+scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/
 
 # Restart nginx to apply new configuration
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local restart nginx"
-```
-
-### Deploy Static Site Files
-
-```bash
-# Build the Astro project (in the client repository)
-npm run build
-
-# Deploy built files to the instance
-scp -r client/dist/* wailord:/home/ec2-user/html/
 ```
 
 ## Architecture
@@ -115,7 +121,7 @@ scp -r client/dist/* wailord:/home/ec2-user/html/
 ### Template-Based Configuration
 
 Nginx configuration uses `envsubst` for environment variable substitution:
-- Templates located in `templates/`
+- Templates located in `etc/nginx/templates/`
 - `${DOMAIN}` variable is replaced at container startup
 - No manual volume editing required
 
@@ -125,7 +131,7 @@ Nginx configuration uses `envsubst` for environment variable substitution:
 |----------|------|
 | Docker Compose config | `/home/ec2-user/docker/docker-compose.yml` |
 | Environment file | `/home/ec2-user/docker/.env.local` |
-| Nginx templates | `/home/ec2-user/docker/templates/` |
+| Nginx templates | `/home/ec2-user/docker/etc/nginx/templates/` |
 | Static files | `/home/ec2-user/html/` |
 
 ### CloudWatch Monitoring

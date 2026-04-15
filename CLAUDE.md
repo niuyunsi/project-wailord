@@ -26,19 +26,20 @@ Use `ssh wailord "command"` for remote commands and `scp file wailord:/path/` fo
 ### File Locations
 - **Remote docker-compose**: `/home/ec2-user/docker/docker-compose.yml`
 - **Remote environment file**: `/home/ec2-user/docker/.env.local`
-- **Remote templates**: `/home/ec2-user/docker/templates/`
+- **Remote templates**: `/home/ec2-user/docker/etc/nginx/templates/`
 - **Remote static files**: `/home/ec2-user/html/` (Astro build output)
 
 ### Template-Based Configuration
 - Nginx uses `envsubst` for environment variable substitution
-- Templates in `templates/` use `${DOMAIN}` syntax
+- Templates in `etc/nginx/templates/` use `${DOMAIN}` syntax
 - Automatically rendered at container startup
 - No manual docker volume editing required
 
 ### Working Pattern for Nginx Config Updates
-1. Update `templates/default.conf.template` locally
-2. `scp templates/default.conf.template wailord:/home/ec2-user/docker/templates/`
-3. `ssh wailord "docker-compose ... restart nginx"`
+1. Update `etc/nginx/templates/default.conf.template` locally
+2. `ssh wailord "mkdir -p /home/ec2-user/docker/etc/nginx/templates"`
+3. `scp etc/nginx/templates/default.conf.template wailord:/home/ec2-user/docker/etc/nginx/templates/`
+4. `ssh wailord "docker-compose ... restart nginx"`
 
 ### Environment Variables
 Located in `.env.local`:
@@ -54,8 +55,7 @@ See [README.md](README.md) for complete command documentation. Quick reference:
 |------|-----------------|
 | Start services | `ssh wailord "docker-compose ... up -d"` |
 | Renew SSL | `ssh wailord "docker-compose ... up certbot"` |
-| Update nginx | `scp template wailord:/templates/` + `ssh wailord "docker-compose ... restart nginx"` |
-| Deploy site | `scp -r dist/* wailord:/home/ec2-user/html/` |
+| Update nginx | `ssh wailord "mkdir -p .../templates"` + `scp template wailord:/.../templates/` + `ssh wailord "docker-compose ... restart nginx"` |
 
 ## Architecture Summary
 
