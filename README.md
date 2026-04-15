@@ -37,12 +37,27 @@ V2RAY_ID=your-v2ray-uuid
 ### First Time Setup
 
 ```bash
-# Create tmp directory on remote instance
-ssh wailord "mkdir -p /home/ec2-user/tmp"
+# Create necessary directories on remote instance
+ssh wailord "mkdir -p /home/ec2-user/docker /home/ec2-user/html"
 
-# Deploy nginx config to remote docker volume
-scp etc/nginx/conf.d/default.conf.init wailord:/home/ec2-user/tmp/default.conf.init
-ssh wailord "sudo cp /home/ec2-user/tmp/default.conf.init /var/lib/docker/volumes/docker_nginx-conf/_data/default.conf"
+# Upload docker-compose.yml and environment file
+scp docker-compose.yml wailord:/home/ec2-user/docker/
+scp .env.local wailord:/home/ec2-user/docker/
+
+# Upload nginx templates
+scp -r templates wailord:/home/ec2-user/docker/
+
+# Create initial nginx config for SSL certificate generation
+ssh wailord "cat > /home/ec2-user/docker/nginx-init.conf << 'EOF'
+server {
+    listen       80;
+    listen  [::]:80;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+}
+EOF"
 
 # Start nginx and certbot for initial SSL certificate
 ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local up nginx certbot"
@@ -64,10 +79,11 @@ ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml exec ngi
 ### Update Nginx Configuration
 
 ```bash
-# Deploy to remote docker volume
-scp etc/nginx/conf.d/default.conf wailord:/home/ec2-user/tmp/default.conf
-ssh wailord "sudo cp /home/ec2-user/tmp/default.conf /var/lib/docker/volumes/docker_nginx-conf/_data/default.conf"
-ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml exec nginx nginx -s reload"
+# Deploy updated template
+scp templates/default.conf.template wailord:/home/ec2-user/docker/templates/
+
+# Restart nginx to apply new configuration
+ssh wailord "docker-compose -f /home/ec2-user/docker/docker-compose.yml --env-file /home/ec2-user/docker/.env.local restart nginx"
 ```
 
 ### Deploy Static Site Files
@@ -92,10 +108,16 @@ scp -r client/dist/* wailord:/home/ec2-user/html/
 
 ### Docker Volumes
 
-- `nginx-conf` - Nginx configuration
 - `certs` - Let's Encrypt SSL certificates
 - `certbot-www` - ACME challenge directory
 - `v2ray-config` - V2Ray configuration
+
+### Template-Based Configuration
+
+Nginx configuration uses `envsubst` for environment variable substitution:
+- Templates located in `templates/`
+- `${DOMAIN}` variable is replaced at container startup
+- No manual volume editing required
 
 ### File Paths
 
@@ -103,8 +125,7 @@ scp -r client/dist/* wailord:/home/ec2-user/html/
 |----------|------|
 | Docker Compose config | `/home/ec2-user/docker/docker-compose.yml` |
 | Environment file | `/home/ec2-user/docker/.env.local` |
-| Nginx docker volume | `/var/lib/docker/volumes/docker_nginx-conf/_data/` |
-| Temp directory | `/home/ec2-user/tmp/` |
+| Nginx templates | `/home/ec2-user/docker/templates/` |
 | Static files | `/home/ec2-user/html/` |
 
 ### CloudWatch Monitoring

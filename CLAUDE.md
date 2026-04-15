@@ -24,20 +24,26 @@ Host wailord
 Use `ssh wailord "command"` for remote commands and `scp file wailord:/path/` for file transfers.
 
 ### File Locations
-- **Remote docker volumes**: `/var/lib/docker/volumes/docker_nginx-conf/_data/`
-- **Remote temp directory**: `/home/ec2-user/tmp/` (for copying files before docker volume)
-- **Remote static files**: `/home/ec2-user/html/` (Astro build output)
 - **Remote docker-compose**: `/home/ec2-user/docker/docker-compose.yml`
+- **Remote environment file**: `/home/ec2-user/docker/.env.local`
+- **Remote templates**: `/home/ec2-user/docker/templates/`
+- **Remote static files**: `/home/ec2-user/html/` (Astro build output)
+
+### Template-Based Configuration
+- Nginx uses `envsubst` for environment variable substitution
+- Templates in `templates/` use `${DOMAIN}` syntax
+- Automatically rendered at container startup
+- No manual docker volume editing required
 
 ### Working Pattern for Nginx Config Updates
-1. `scp config file wailord:/home/ec2-user/tmp/`
-2. `ssh wailord "sudo cp /home/ec2-user/tmp/file /var/lib/docker/volumes/..."`
-3. `ssh wailord "docker-compose ... exec nginx nginx -s reload"`
+1. Update `templates/default.conf.template` locally
+2. `scp templates/default.conf.template wailord:/home/ec2-user/docker/templates/`
+3. `ssh wailord "docker-compose ... restart nginx"`
 
 ### Environment Variables
 Located in `.env.local`:
 - `EMAIL` - Let's Encrypt notifications
-- `DOMAIN` - SSL certificate domain
+- `DOMAIN` - SSL certificate domain (used in nginx templates via `${DOMAIN}`)
 - `V2RAY_ID` - V2Ray client UUID
 
 ## Commands Reference
@@ -48,7 +54,7 @@ See [README.md](README.md) for complete command documentation. Quick reference:
 |------|-----------------|
 | Start services | `ssh wailord "docker-compose ... up -d"` |
 | Renew SSL | `ssh wailord "docker-compose ... up certbot"` |
-| Update nginx | `scp config wailord:/tmp/` + `ssh wailord "sudo cp ..."` |
+| Update nginx | `scp template wailord:/templates/` + `ssh wailord "docker-compose ... restart nginx"` |
 | Deploy site | `scp -r dist/* wailord:/home/ec2-user/html/` |
 
 ## Architecture Summary
@@ -56,6 +62,7 @@ See [README.md](README.md) for complete command documentation. Quick reference:
 - **Nginx** (ports 80, 443) → Static files + V2Ray proxy
 - **V2Ray** (port 11055) → vmess over websocket at `/tech`
 - **Certbot** → Let's Encrypt SSL automation
+- **Template system** → Environment variable substitution for DOMAIN
 
 See [README.md](README.md) for detailed architecture diagrams and CloudWatch monitoring configuration.
 
